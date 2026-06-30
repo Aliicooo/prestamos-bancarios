@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Replicación · Préstamos Bancarios</title>
+
+  <!-- Chart.js para gráficos interactivos -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+  </script>
+
+  <style>
+    /* ─── FUENTES ─── */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    /* ─── PALETA DE COLORES ─── */
+    :root {
+      --primary: #1a1a3e;
+      --primary-light: #2a2a5e;
+      --secondary: #ffd700;
+      --accent-success: #69db7c;
+      --accent-danger: #ff6b6b;
+      --accent-info: #4fc3f7;
+      --accent-warning: #ffb74d;
+      --bg-light: #f5f5fa;
+      --bg-dark: #0d0d1a;
+      --bg-card: #ffffff;
+      --bg-card-dark: #1e1e3a;
+      --text-dark: #1a1a2e;
+      --text-light: #f0f0f5;
+      --text-muted: #8888aa;
+      --border-light: #e0e0e8;
+      --border-dark: #2a2a50;
+      --shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+      --shadow-dark: 0 8px 32px rgba(0, 0, 0, 0.6);
+      --radius: 16px;
+      --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ─── RESET ─── */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    html {
+      scroll-behavior: smooth;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-light);
+      color: var(--text-dark);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ─── SCROLLBAR ─── */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-light);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--secondary);
+      border-radius: 3px;
+    }
+
+    /* ─── NAV ─── */
+    .nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: rgba(26, 26, 62, 0.95);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+      padding: 0 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.15rem;
+      height: 56px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav::-webkit-scrollbar {
+      display: none;
+    }
+    .nav-item {
+      flex-shrink: 0;
+      padding: 0.3rem 0.6rem;
+      border-radius: 16px;
+      cursor: pointer;
+      font-size: 0.5rem;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      color: rgba(255, 255, 255, 0.35);
+      transition: var(--transition);
+      border: 1px solid transparent;
+      white-space: nowrap;
+      letter-spacing: 0.05em;
+      background: transparent;
+    }
+    .nav-item:hover {
+      color: #fff;
+      background: rgba(255, 215, 0, 0.08);
+    }
+    .nav-item.active {
+      color: var(--text-dark);
+      background: var(--secondary);
+      border-color: var(--secondary);
+    }
+    .nav-title {
+      margin-left: auto;
+      font-weight: 700;
+      font-size: 0.5rem;
+      color: rgba(255, 255, 255, 0.25);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .nav-title span {
+      color: var(--secondary);
+    }
+
+    @media(min-width:768px) {
+      .nav-item {
+        font-size: 0.6rem;
+        padding: 0.4rem 0.9rem;
+      }
+      .nav-title {
+        font-size: 0.6rem;
+      }
+    }
+
+    /* ─── PROGRESS BAR ─── */
+    .progress-bar {
+      position: fixed;
+      top: 56px;
+      left: 0;
+      right: 0;
+      z-index: 999;
+      height: 3px;
+      background: rgba(255, 215, 0, 0.1);
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--secondary), var(--accent-success), var(--accent-info));
+      transition: width 0.4s ease;
+    }
+
+    /* ─── SLIDES ─── */
+    .slides {
+      padding-top: 59px;
+    }
+    .slide {
+      min-height: 100vh;
+      padding: 3rem 1.2rem 5rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+      position: relative;
+    }
+    .slide.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .slide.light {
+      background: var(--bg-light);
+      color: var(--text-dark);
+    }
+    .slide.dark {
+      background: var(--bg-dark);
+      color: var(--text-light);
+    }
+    .slide.primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: var(--text-light);
+    }
+    .slide-inner {
+      max-width: 1100px;
+      width: 100%;
+    }
+
+    /* ─── FOOTER ─── */
+    .slide-footer {
+      position: absolute;
+      bottom: 0.8rem;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 1.5rem;
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      opacity: 0.6;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+    .slide.dark .slide-footer {
+      color: rgba(255, 255, 255, 0.3);
+    }
+    .slide.primary .slide-footer {
+      color: rgba(255, 255, 255, 0.25);
+    }
+    .slide-footer .footer-univ {
+      font-weight: 600;
+    }
+    .slide-footer .footer-slide {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    @media(max-width:480px) {
+      .slide-footer {
+        font-size: 0.45rem;
+        padding: 0 0.8rem;
+        bottom: 0.4rem;
+      }
+    }
+
+    /* ─── TYPOGRAPHY ─── */
+    h1 {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(2rem, 7vw, 4.5rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+    }
+    h1 .highlight {
+      background: linear-gradient(135deg, var(--secondary), var(--accent-warning));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    h1 .highlight2 {
+      background: linear-gradient(135deg, var(--accent-info), var(--accent-success));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h2 {
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(1.5rem, 3.5vw, 2.8rem);
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 0.8rem;
+    }
+    h2 .hl-gold {
+      color: var(--secondary);
+    }
+    h2 .hl-blue {
+      color: var(--accent-info);
+    }
+    h2 .hl-green {
+      color: var(--accent-success);
+    }
+    h2 .hl-red {
+      color: var(--accent-danger);
+    }
+
+    h3 {
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 0.4rem;
+    }
+    .dark h3 {
+      color: var(--secondary);
+    }
+    .light h3 {
+      color: var(--primary);
+    }
+
+    p {
+      line-height: 1.7;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .dark p {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .big-text {
+      font-size: 1rem;
+      font-weight: 300;
+    }
+    .dark .big-text {
+      color: rgba(255, 255, 255, 0.8);
+    }
+    .light .big-text {
+      color: var(--text-dark);
+    }
+
+    @media(max-width:480px) {
+      p {
+        font-size: 0.82rem;
+      }
+      .big-text {
+        font-size: 0.9rem;
+      }
+    }
+
+    /* ─── TAG ─── */
+    .tag {
+      display: inline-block;
+      padding: 0.2rem 0.7rem;
+      border-radius: 16px;
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+    .slide.dark .tag {
+      background: rgba(255, 215, 0, 0.1);
+      color: var(--secondary);
+      border: 1px solid rgba(255, 215, 0, 0.15);
+    }
+    .slide.light .tag {
+      background: rgba(26, 26, 62, 0.06);
+      color: var(--primary);
+      border: 1px solid rgba(26, 26, 62, 0.1);
+    }
+    .slide.primary .tag {
+      background: rgba(255, 215, 0, 0.12);
+      color: var(--secondary);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+    }
+
+    /* ─── CARDS ─── */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 1.2rem;
+      margin: 0.6rem 0;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      border: 1px solid var(--border-light);
+    }
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
+    }
+    .dark .card {
+      background: var(--bg-card-dark);
+      border-color: var(--border-dark);
+      box-shadow: var(--shadow-dark);
+    }
+    .dark .card:hover {
+      border-color: var(--secondary);
+    }
+    .card.gold-border {
+      border-left: 4px solid var(--secondary);
+    }
+    .card.green-border {
+      border-left: 4px solid var(--accent-success);
+    }
+    .card.blue-border {
+      border-left: 4px solid var(--accent-info);
+    }
+    .card.red-border {
+      border-left: 4px solid var(--accent-danger);
+    }
+    .card.orange-border {
+      border-left: 4px solid var(--accent-warning);
+    }
+
+    @media(max-width:480px) {
+      .card {
+        padding: 0.8rem;
+      }
+    }
+
+    /* ─── GRIDS ─── */
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .grid3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1rem;
+    }
+    .grid4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.8rem;
+    }
+    @media(max-width:768px) {
+      .grid2,
+      .grid3 {
+        grid-template-columns: 1fr;
+      }
+      .grid4 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media(max-width:480px) {
+      .grid4 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ─── IMG CONTAINER ─── */
+    .img-container {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border-light);
+      overflow: hidden;
+      padding: 0.4rem;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+    .dark .img-container {
+      background: var(--bg-card-dark);
+      border-color: var(--border-dark);
+      box-shadow: var(--shadow-dark);
+    }
+    .img-container:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15);
+    }
+    .img-container img {
+      width: 100%;
+      border-radius: 8px;
+      display: block;
+    }
+    .img-container .caption {
+      padding: 0.3rem 0.5rem 0.1rem;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      line-height: 1.5;
+    }
+    .img-container .caption strong {
+      color: var(--text-dark);
+    }
+    .dark .img-container .caption strong {
+      color: var(--text-light);
+    }
+    @media(max-width:480px) {
+      .img-container .caption {
+        font-size: 0.6rem;
+      }
+    }
+
+    /* ─── STATS ─── */
+    .stat {
+      text-align: center;
+      padding: 1rem 0.8rem;
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+    .dark .stat {
+      background: var(--bg-card-dark);
+      border-color: var(--border-dark);
+      box-shadow: var(--shadow-dark);
+    }
+    .stat:hover {
+      transform: translateY(-3px);
+    }
+    .stat .number {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.8rem;
+      font-weight: 700;
+      display: block;
+    }
+    .stat .number.gold {
+      color: var(--secondary);
+    }
+    .stat .number.green {
+      color: var(--accent-success);
+    }
+    .stat .number.blue {
+      color: var(--accent-info);
+    }
+    .stat .number.red {
+      color: var(--accent-danger);
+    }
+    .stat .number.orange {
+      color: var(--accent-warning);
+    }
+    .stat .label {
+      font-size: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-top: 0.2rem;
+      color: var(--text-muted);
+    }
+    @media(max-width:480px) {
+      .stat .number {
+        font-size: 1.4rem;
+      }
+      .stat {
+        padding: 0.6rem 0.4rem;
+      }
+    }
+
+    /* ─── STEP ROW ─── */
+    .step-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.8rem;
+      margin: 0.4rem 0;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      background: var(--secondary);
+      color: var(--text-dark);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.6rem;
+      margin-top: 0.1rem;
+    }
+
+    /* ─── BUTTON ─── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.5rem;
+      background: var(--secondary);
+      color: var(--text-dark);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      transition: var(--transition);
+      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.25);
+    }
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4);
+    }
+
+    /* ─── SCROLL HINT ─── */
+    .scroll-hint {
+      text-align: center;
+      font-size: 0.6rem;
+      margin-top: 2rem;
+      animation: bounce 2s infinite;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+    }
+    .slide.primary .scroll-hint {
+      color: rgba(255, 255, 255, 0.25);
+    }
+    .slide.dark .scroll-hint {
+      color: rgba(255, 255, 255, 0.15);
+    }
+    .slide.light .scroll-hint {
+      color: var(--text-muted);
+    }
+
+    @keyframes bounce {
+      0%,
+      100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(6px);
+      }
+    }
+
+    /* ─── DIVIDER ─── */
+    .divider {
+      height: 1px;
+      margin: 1.5rem 0;
+    }
+    .divider.gold {
+      background: linear-gradient(90deg, transparent, var(--secondary), transparent);
+    }
+    .divider.white {
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+    }
+
+    /* ─── DASHBOARD ─── */
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.8rem;
+    }
+    @media(max-width:768px) {
+      .dashboard {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+    @media(max-width:480px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+    .dashboard .stat {
+      padding: 0.8rem;
+    }
+    .dashboard .stat .number {
+      font-size: 1.6rem;
+    }
+
+    /* ─── HERO DECO ─── */
+    .hero-deco {
+      position: absolute;
+      top: 60px;
+      right: -5%;
+      opacity: 0.04;
+      pointer-events: none;
+      font-size: 16vw;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--secondary);
+      user-select: none;
+    }
+
+    /* ─── TABLA ─── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+    th {
+      background: var(--bg-light);
+      padding: 0.4rem 0.8rem;
+      text-align: left;
+      font-weight: 700;
+      border-bottom: 2px solid var(--border-light);
+      color: var(--primary);
+      font-size: 0.7rem;
+    }
+    .dark th {
+      background: var(--bg-card-dark);
+      border-color: var(--border-dark);
+      color: var(--secondary);
+    }
+    td {
+      padding: 0.4rem 0.8rem;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+    .dark td {
+      border-color: var(--border-dark);
+    }
+    tr:hover td {
+      background: rgba(255, 215, 0, 0.04);
+    }
+    .dark tr:hover td {
+      background: rgba(255, 215, 0, 0.06);
+    }
+    .table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    @media(max-width:480px) {
+      table {
+        font-size: 0.6rem;
+      }
+      th,
+      td {
+        padding: 0.25rem 0.4rem;
+      }
+    }
+
+    /* ─── INSIGHT ─── */
+    .insight {
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      font-weight: 400;
+    }
+    .insight.gold {
+      background: rgba(255, 215, 0, 0.06);
+      border-left: 3px solid var(--secondary);
+    }
+    .insight.green {
+      background: rgba(105, 219, 124, 0.06);
+      border-left: 3px solid var(--accent-success);
+    }
+    .insight.blue {
+      background: rgba(79, 195, 247, 0.06);
+      border-left: 3px solid var(--accent-info);
+    }
+    .insight.red {
+      background: rgba(255, 107, 107, 0.06);
+      border-left: 3px solid var(--accent-danger);
+    }
+    .dark .insight.gold {
+      background: rgba(255, 215, 0, 0.05);
+    }
+    .dark .insight.green {
+      background: rgba(105, 219, 124, 0.05);
+    }
+    .dark .insight.blue {
+      background: rgba(79, 195, 247, 0.05);
+    }
+    .dark .insight.red {
+      background: rgba(255, 107, 107, 0.05);
+    }
+    @media(max-width:480px) {
+      .insight {
+        font-size: 0.75rem;
+        padding: 0.4rem 0.6rem;
+      }
+    }
+
+    /* ─── CHART WRAPPER ─── */
+    .chart-wrapper {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 0.8rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border-light);
+    }
+    .dark .chart-wrapper {
+      background: var(--bg-card-dark);
+      border-color: var(--border-dark);
+      box-shadow: var(--shadow-dark);
+    }
+    .chart-wrapper canvas {
+      max-height: 200px;
+    }
+
+    /* ─── FOOTER FIJO EN CADA SLIDE ─── */
+    .slide-footer {
+      position: absolute;
+      bottom: 0.6rem;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 1.2rem;
+      font-size: 0.5rem;
+      color: var(--text-muted);
+      font-weight: 400;
+      opacity: 0.5;
+      flex-wrap: wrap;
+      gap: 0.2rem;
+    }
+    .slide.dark .slide-footer {
+      color: rgba(255, 255, 255, 0.2);
+    }
+    .slide.primary .slide-footer {
+      color: rgba(255, 255, 255, 0.15);
+    }
+    .slide-footer .footer-univ {
+      font-weight: 600;
+    }
+    .slide-footer .footer-slide {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    @media(max-width:480px) {
+      .slide-footer {
+        font-size: 0.4rem;
+        padding: 0 0.6rem;
+        bottom: 0.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── NAV ─── -->
+  <nav class="nav" id="nav">
+    <div class="nav-item active" onclick="goTo(0)">🏠 Inicio</div>
+    <div class="nav-item" onclick="goTo(1)">📋 Flujo</div>
+    <div class="nav-item" onclick="goTo(2)">📊 Variables</div>
+    <div class="nav-item" onclick="goTo(3)">🔧 Prep.</div>
+    <div class="nav-item" onclick="goTo(4)">📈 Descriptivo</div>
+    <div class="nav-item" onclick="goTo(5)">📊 Barras</div>
+    <div class="nav-item" onclick="goTo(6)">📉 Relaciones</div>
+    <div class="nav-item" onclick="goTo(7)">🎯 Nominales</div>
+    <div class="nav-item" onclick="goTo(8)">🔢 Multivariado</div>
+    <div class="nav-item" onclick="goTo(9)">🧮 Modelo</div>
+    <div class="nav-item" onclick="goTo(10)">📋 ANOVA</div>
+    <div class="nav-item" onclick="goTo(11)">📊 Predicción</div>
+    <div class="nav-item" onclick="goTo(12)">📈 ROC</div>
+    <div class="nav-item" onclick="goTo(13)">🏆 Dashboard</div>
+    <span class="nav-title">Replicación · <span>Préstamos</span></span>
+  </nav>
+
+  <!-- ─── PROGRESS BAR ─── -->
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+  <!-- ─── SLIDES ─── -->
+  <div class="slides">
+
+<!-- ════════════════════════════════════════════════════════════ -->
+<!-- SLIDE 0: HERO                                             -->
+<!-- ════════════════════════════════════════════════════════════ -->
+<section class="slide primary visible" id="slide-0" style="position:relative;overflow:hidden;">
+  <div class="hero-deco">P( Loan )</div>
+  <div class="slide-inner">
+    <div class="tag">📊 Replicación · Regresión Logística</div>
+    <h1 style="margin-bottom:1rem;">
+      Factores que influyen<br>en la <span class="highlight">aceptación</span><br>de <span class="highlight2">préstamos</span> bancarios
+    </h1>
+    <p class="big-text" style="max-width:580px;margin-bottom:1.2rem;">
+      Análisis completo de 5.000 clientes bancarios para identificar los factores determinantes en la aceptación de préstamos personales.
+    </p>
+
+    <!-- ─── CRÉDITOS DESTACADOS ─── -->
+    <div style="margin: 1.2rem 0 1.5rem 0; padding: 0.8rem 1.5rem; 
+                background: rgba(255,215,0,0.08); 
+                border: 1px solid rgba(255,215,0,0.15);
+                border-radius: 12px;
+                display: inline-block;
+                backdrop-filter: blur(4px);">
+      <div style="font-size: clamp(0.8rem, 1.5vw, 1.1rem); font-weight: 600; color: var(--secondary); letter-spacing: 0.05em;">
+        🏛️ Escuela Superior Politécnica de Chimborazo
+      </div>
+      <div style="font-size: clamp(0.7rem, 1.2vw, 0.95rem); color: rgba(255,255,255,0.5); margin-top: 0.2rem;">
+        <span style="color: rgba(255,255,255,0.7);">Autores:</span> Alexis Galarza <span style="color: rgba(255,255,255,0.2);">·</span> Joel Cuvi
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:1.5rem;">
+      <span class="tag" style="background:rgba(255,215,0,0.1);border-color:rgba(255,215,0,0.15);color:var(--secondary);">📊 5.000 clientes</span>
+      <span class="tag" style="background:rgba(255,215,0,0.1);border-color:rgba(255,215,0,0.15);color:var(--secondary);">📈 13 variables</span>
+      <span class="tag" style="background:rgba(255,215,0,0.1);border-color:rgba(255,215,0,0.15);color:var(--secondary);">🎯 Personal.Loan</span>
+      <span class="tag" style="background:rgba(255,215,0,0.1);border-color:rgba(255,215,0,0.15);color:var(--secondary);">🧮 Regresión Logística</span>
+      <span class="tag" style="background:rgba(255,215,0,0.1);border-color:rgba(255,215,0,0.15);color:var(--secondary);">📉 AUC = 0.95</span>
+      <span class="tag" style="background:rgba(255,215,0,0.1);border-color:rgba(255,215,0,0.15);color:var(--secondary);">✅ Precisión 95.6%</span>
+    </div>
+    <button class="btn" onclick="goTo(1)">Comenzar análisis ↓</button>
+    <div class="scroll-hint">▼ desplázate o usa el menú</div>
+  </div>
+
+  <!-- ─── FOOTER PEQUEÑO ─── -->
+  <div class="slide-footer">
+    <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+    <span>Alexis Galarza &amp; Joel Cuvi</span>
+    <span class="footer-slide">1 / 14</span>
+  </div>
+</section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 1: FLUJO COMPLETO                                   -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide light" id="slide-1">
+      <div class="slide-inner">
+        <div class="tag">📋 Flujo del análisis</div>
+        <h2>Metodología <span class="hl-gold">paso a paso</span></h2>
+        <p class="big-text" style="margin-bottom:1rem;">El recorrido completo del estudio, desde los datos hasta las conclusiones.</p>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0.8rem;margin-bottom:1rem;">
+          <div class="card gold-border" style="text-align:center;padding:0.8rem;">
+            <div style="font-size:1.8rem;margin-bottom:0.2rem;">📂</div>
+            <div style="font-weight:700;font-size:0.8rem;">1. Datos</div>
+            <div style="font-size:0.6rem;color:var(--text-muted);">5.000 · 13 vars</div>
+          </div>
+          <div class="card blue-border" style="text-align:center;padding:0.8rem;">
+            <div style="font-size:1.8rem;margin-bottom:0.2rem;">🔧</div>
+            <div style="font-weight:700;font-size:0.8rem;">2. Prep.</div>
+            <div style="font-size:0.6rem;color:var(--text-muted);">Limpieza · Factores</div>
+          </div>
+          <div class="card green-border" style="text-align:center;padding:0.8rem;">
+            <div style="font-size:1.8rem;margin-bottom:0.2rem;">📊</div>
+            <div style="font-weight:700;font-size:0.8rem;">3. Análisis</div>
+            <div style="font-size:0.6rem;color:var(--text-muted);">Descriptivo · Visual</div>
+          </div>
+          <div class="card orange-border" style="text-align:center;padding:0.8rem;">
+            <div style="font-size:1.8rem;margin-bottom:0.2rem;">🧮</div>
+            <div style="font-weight:700;font-size:0.8rem;">4. Modelo</div>
+            <div style="font-size:0.6rem;color:var(--text-muted);">Logístico · ANOVA</div>
+          </div>
+          <div class="card red-border" style="text-align:center;padding:0.8rem;">
+            <div style="font-size:1.8rem;margin-bottom:0.2rem;">📈</div>
+            <div style="font-weight:700;font-size:0.8rem;">5. Evaluación</div>
+            <div style="font-size:0.6rem;color:var(--text-muted);">ROC · Confusión</div>
+          </div>
+          <div class="card gold-border" style="text-align:center;padding:0.8rem;">
+            <div style="font-size:1.8rem;margin-bottom:0.2rem;">🏆</div>
+            <div style="font-weight:700;font-size:0.8rem;">6. Resultados</div>
+            <div style="font-size:0.6rem;color:var(--text-muted);">Dashboard · Conclusiones</div>
+          </div>
+        </div>
+
+        <div class="insight gold">
+          El análisis sigue un flujo lógico: desde los datos crudos hasta la interpretación de resultados, pasando por el pre-procesamiento, el modelado y la evaluación predictiva.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">2 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 2: VARIABLES                                        -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide dark" id="slide-2">
+      <div class="slide-inner">
+        <div class="tag">02 · Variables</div>
+        <h2>Variables del <span class="hl-gold">dataset</span></h2>
+        <div class="grid3">
+          <div class="card gold-border">
+            <h3>👤 Demográficas</h3>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Age · Edad</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Experience · Años de experiencia</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Family · Tamaño familiar</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Education · Nivel educativo</p>
+          </div>
+          <div class="card blue-border">
+            <h3 style="color:var(--accent-info);">💰 Financieras</h3>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Income · Ingreso anual</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">CCAvg · Gasto mensual en tarjeta</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Mortgage · Valor de la hipoteca</p>
+          </div>
+          <div class="card green-border">
+            <h3 style="color:var(--accent-success);">🏦 Productos bancarios</h3>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Securities Account · Cuenta de valores</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">CD Account · Certificado de depósito</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">Online · Banca en línea</p>
+            <p style="font-size:0.8rem;color:rgba(255,255,255,0.6);">CreditCard · Tarjeta de crédito</p>
+          </div>
+        </div>
+        <div class="card" style="border-left:4px solid var(--accent-warning);margin-top:0.4rem;">
+          <h3 style="color:var(--accent-warning);">🎯 Variable objetivo</h3>
+          <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;">Personal.Loan — Indica si el cliente aceptó (Yes) o no (No) el préstamo.</p>
+          <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:0.3rem;font-size:0.8rem;">
+            <div><span style="color:var(--accent-danger);">●</span> No: 4.520 (90.4%)</div>
+            <div><span style="color:var(--accent-success);">●</span> Yes: 480 (9.6%)</div>
+            <div><span style="color:var(--accent-warning);">⚠️</span> Datos desbalanceados</div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">3 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 3: PRE-PROCESAMIENTO                                -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide light" id="slide-3">
+      <div class="slide-inner">
+        <div class="tag">03 · Pre-procesamiento</div>
+        <h2>Preparación de los <span class="hl-blue">datos</span></h2>
+        <div class="grid2">
+          <div class="card gold-border">
+            <h3 style="color:var(--primary);">📂 Carga y transformación</h3>
+            <div style="background:var(--bg-light);padding:0.5rem;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:var(--text-muted);margin-top:0.4rem;overflow-x:auto;">
+              data_bank <- read.csv("Bank_Personal_Loan.csv")<br>
+              data_bank$Education <- factor(data_bank$Education)<br>
+              data_bank$Personal.Loan <- factor(data_bank$Personal.Loan)<br>
+              data_bank$CCAvg <- as.numeric(gsub("/", ".", data_bank$CCAvg))
+            </div>
+          </div>
+          <div class="card blue-border">
+            <h3 style="color:var(--accent-info);">🔧 Conversión de tipos</h3>
+            <div style="font-size:0.7rem;line-height:1.8;">
+              <p><span style="color:var(--secondary);">●</span> Education → factor (3 niveles)</p>
+              <p><span style="color:var(--accent-info);">●</span> Personal.Loan → factor (No / Yes)</p>
+              <p><span style="color:var(--accent-success);">●</span> Variables binarias → factor</p>
+              <p><span style="color:var(--accent-warning);">●</span> CCAvg → numeric (1/60 → 1.60)</p>
+            </div>
+          </div>
+        </div>
+        <div class="card green-border">
+          <h3 style="color:var(--accent-success);">✅ Datos completos</h3>
+          <p style="font-size:0.85rem;">which(is.na(data_bank)) → integer(0) — No hay datos perdidos</p>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">4 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 4: DESCRIPTIVOS                                     -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide dark" id="slide-4">
+      <div class="slide-inner">
+        <div class="tag">04 · Descriptivos</div>
+        <h2>Estadísticos <span class="hl-gold">descriptivos</span></h2>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Variable</th><th>Media</th><th>Mediana</th><th>Mín.</th><th>Máx.</th><th>DE</th></tr>
+            <tr><td>Age</td><td>45.34</td><td>45</td><td>23</td><td>67</td><td>11.46</td></tr>
+            <tr><td>Experience</td><td>20.10</td><td>20</td><td>-3</td><td>43</td><td>11.47</td></tr>
+            <tr><td>Income</td><td>73.77</td><td>64</td><td>8</td><td>224</td><td>46.03</td></tr>
+            <tr><td>Family</td><td>2.40</td><td>2</td><td>1</td><td>4</td><td>1.15</td></tr>
+            <tr><td>CCAvg</td><td>1.94</td><td>1.5</td><td>0</td><td>10</td><td>1.75</td></tr>
+            <tr><td>Mortgage</td><td>56.50</td><td>0</td><td>0</td><td>635</td><td>101.71</td></tr>
+          </table>
+        </div>
+        <div class="grid4" style="margin-top:0.8rem;">
+          <div class="stat"><span class="number gold">5,000</span><span class="label">Clientes</span></div>
+          <div class="stat"><span class="number red">90.4%</span><span class="label">No aceptaron</span></div>
+          <div class="stat"><span class="number green">9.6%</span><span class="label">Sí aceptaron</span></div>
+          <div class="stat"><span class="number blue">13</span><span class="label">Variables</span></div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">5 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 5: GRÁFICOS DE BARRAS                               -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide light" id="slide-5">
+      <div class="slide-inner">
+        <div class="tag">05 · Visualización</div>
+        <h2>Distribución de variables <span class="hl-blue">categóricas</span></h2>
+        <p style="margin-bottom:0.4rem;font-size:0.85rem;">Diagramas de barras generados con ggplot2.</p>
+        <div class="img-container">
+          <img src="img_graficos/01_barras.png" alt="Gráficos de barras">
+          <div class="caption">
+            La mayoría de clientes tiene educación Undergraduate. Solo el 9.6% aceptó el préstamo. El 75% usa banca en línea y el 65% tiene tarjeta de crédito.
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">6 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 6: DISPERSIÓN Y BOXPLOTS                            -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide dark" id="slide-6">
+      <div class="slide-inner">
+        <div class="tag">06 · Relaciones</div>
+        <h2>Dispersión y <span class="hl-gold">boxplots</span></h2>
+        <p style="margin-bottom:0.4rem;font-size:0.85rem;">Relación entre variables financieras y la aceptación del préstamo.</p>
+        <div class="grid2">
+          <div class="img-container">
+            <img src="img_graficos/02_scatter_income_ccavg.png" alt="Scatter Income vs CCAvg">
+            <div class="caption">Clientes que aceptan el préstamo (amarillo) tienen mayores ingresos y mayor gasto en tarjeta.</div>
+          </div>
+          <div class="img-container">
+            <img src="img_graficos/03_scatter_age_income.png" alt="Scatter Age vs Income">
+            <div class="caption">Los solicitantes se concentran en edades de 30-55 años, donde hay mayor estabilidad económica.</div>
+          </div>
+          <div class="img-container">
+            <img src="img_graficos/04_scatter_mortgage_income.png" alt="Scatter Mortgage vs Income">
+            <div class="caption">Quienes aceptan el préstamo tienen niveles de hipoteca moderados y mayores ingresos.</div>
+          </div>
+          <div class="img-container">
+            <img src="img_graficos/05_boxplots.png" alt="Boxplots">
+            <div class="caption">El ingreso (Income) y el gasto en tarjeta (CCAvg) son los principales diferenciadores.</div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">7 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 7: MOSAICO                                           -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide light" id="slide-7">
+      <div class="slide-inner">
+        <div class="tag">07 · Nominales</div>
+        <h2>Relación con <span class="hl-blue">variables nominales</span></h2>
+        <p style="margin-bottom:0.4rem;font-size:0.85rem;">Proporción de aceptación según categorías.</p>
+        <div class="img-container">
+          <img src="img_graficos/06_mosaico.png" alt="Barras apiladas">
+          <div class="caption">
+            <strong>Educación:</strong> Mayor aceptación en Graduate/Advanced. <strong>Online:</strong> Menor aceptación. <strong>CD Account:</strong> Mayor aceptación. <strong>CreditCard:</strong> Menor aceptación.
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">8 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 8: GGPAIRS                                          -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide dark" id="slide-8">
+      <div class="slide-inner">
+        <div class="tag">08 · Multivariado</div>
+        <h2>Matriz de <span class="hl-gold">correlación</span></h2>
+        <p style="margin-bottom:0.4rem;font-size:0.85rem;">Visualización multivariante con GGally.</p>
+        <div class="grid2">
+          <div class="img-container">
+            <img src="img_graficos/07_ggpairs.png" alt="GGpairs con color">
+            <div class="caption">Income y CCAvg son las variables con mayor poder diferenciador entre quienes aceptan (amarillo) y no aceptan (azul).</div>
+          </div>
+          <div class="img-container">
+            <img src="img_graficos/08_ggpairs_numeric.png" alt="GGpairs numérico">
+            <div class="caption">Correlación positiva entre Income y CCAvg (0.65). La edad tiene baja correlación con las demás variables.</div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">9 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 9: MODELO LOGÍSTICO                                 -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide light" id="slide-9">
+      <div class="slide-inner">
+        <div class="tag">09 · Modelo</div>
+        <h2>Regresión <span class="hl-gold">logística</span></h2>
+        <div style="background:var(--bg-light);border-radius:12px;padding:1rem;font-family:'JetBrains Mono',monospace;font-size:clamp(0.7rem,1.5vw,1.2rem);text-align:center;border:1px solid var(--border-light);margin-bottom:0.8rem;overflow-x:auto;">
+          P(Y=1) = <sup>e<sup>β₀ + β₁·Income + β₂·Education + ...</sup></sup> / <sub>1 + e<sup>β₀ + β₁·Income + β₂·Education + ...</sup></sub>
+        </div>
+        <div class="table-wrap" style="max-height:280px;overflow-y:auto;">
+          <table>
+            <tr><th>Variable</th><th>Estimate</th><th>Pr(>|z|)</th></tr>
+            <tr><td style="color:var(--secondary);font-weight:700;">Income</td><td>+2.773</td><td>&lt;2e-16 ***</td></tr>
+            <tr><td style="color:var(--accent-success);font-weight:700;">Education (Graduate)</td><td>+3.967</td><td>&lt;2e-16 ***</td></tr>
+            <tr><td style="color:var(--accent-success);font-weight:700;">Education (Advanced)</td><td>+4.070</td><td>&lt;2e-16 ***</td></tr>
+            <tr><td style="color:var(--secondary);font-weight:700;">CD.AccountYes</td><td>+3.841</td><td>&lt;2e-16 ***</td></tr>
+            <tr><td style="color:var(--accent-danger);font-weight:700;">OnlineYes</td><td>-0.756</td><td>5.22e-06 ***</td></tr>
+            <tr><td style="color:var(--accent-danger);font-weight:700;">CreditCardYes</td><td>-1.032</td><td>1.30e-06 ***</td></tr>
+            <tr><td style="color:var(--accent-info);font-weight:700;">Family</td><td>+0.708</td><td>1.14e-15 ***</td></tr>
+          </table>
+        </div>
+        <div class="insight gold">
+          El ingreso (Income) es el factor más determinante. La educación avanzada y tener CD Account aumentan la probabilidad. Usar banca online y tener tarjeta de crédito la disminuyen.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">10 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 10: ANOVA                                           -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide dark" id="slide-10">
+      <div class="slide-inner">
+        <div class="tag">10 · ANOVA</div>
+        <h2>ANOVA <span class="hl-gold">secuencial</span></h2>
+        <p style="margin-bottom:0.4rem;font-size:0.85rem;">Efecto de cada variable al ser añadida al modelo.</p>
+        <div class="table-wrap">
+          <table>
+            <tr><th>Variable</th><th>Deviance</th><th>Pr(>Chi)</th></tr>
+            <tr><td style="color:var(--secondary);font-weight:700;">Income</td><td style="color:var(--secondary);">1157.88</td><td>&lt;2.2e-16 ***</td></tr>
+            <tr><td style="color:var(--accent-success);font-weight:700;">Education</td><td style="color:var(--accent-success);">469.67</td><td>&lt;2.2e-16 ***</td></tr>
+            <tr><td style="color:var(--secondary);font-weight:700;">Family</td><td style="color:var(--secondary);">195.38</td><td>&lt;2.2e-16 ***</td></tr>
+            <tr><td style="color:var(--secondary);font-weight:700;">CD.Account</td><td style="color:var(--secondary);">109.79</td><td>&lt;2.2e-16 ***</td></tr>
+            <tr><td style="color:var(--accent-danger);">CreditCard</td><td>26.20</td><td>3.08e-07 ***</td></tr>
+            <tr><td style="color:var(--accent-danger);">Online</td><td>14.82</td><td>0.0001 ***</td></tr>
+            <tr><td style="color:var(--text-muted);">CCAvg</td><td>5.51</td><td>0.018 *</td></tr>
+            <tr><td style="color:var(--text-muted);">Mortgage</td><td>2.80</td><td>0.095</td></tr>
+          </table>
+        </div>
+        <div class="insight gold">
+          Income, Education, Family y CD.Account son las variables con mayor contribución al modelo.
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">11 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 11: PREDICCIÓN Y CONFUSIÓN                          -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide light" id="slide-11">
+      <div class="slide-inner">
+        <div class="tag">11 · Predicción</div>
+        <h2>Predicción y <span class="hl-blue">confusión</span></h2>
+        <p style="margin-bottom:0.4rem;font-size:0.85rem;">Umbral ajustado a 0.3 por datos desbalanceados.</p>
+        <div class="grid2">
+          <div class="img-container">
+            <img src="img_graficos/10_confusion.png" alt="Matriz de confusión">
+            <div class="caption">
+              <strong>Accuracy: 95.6%</strong> · Sensibilidad: 97.7% · Especificidad: 78.0%<br>
+              1.310 verdaderos negativos · 124 verdaderos positivos · 35 falsos positivos · 31 falsos negativos
+            </div>
+          </div>
+          <div class="card gold-border" style="display:flex;flex-direction:column;justify-content:center;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+              <div class="stat" style="padding:0.6rem;"><span class="number gold" style="font-size:1.4rem;">95.6%</span><span class="label">Precisión</span></div>
+              <div class="stat" style="padding:0.6rem;"><span class="number green" style="font-size:1.4rem;">97.7%</span><span class="label">Sensibilidad</span></div>
+              <div class="stat" style="padding:0.6rem;"><span class="number blue" style="font-size:1.4rem;">78.0%</span><span class="label">Especificidad</span></div>
+              <div class="stat" style="padding:0.6rem;"><span class="number orange" style="font-size:1.4rem;">0.765</span><span class="label">Kappa</span></div>
+            </div>
+            <div class="insight green" style="margin-top:0.4rem;font-size:0.8rem;">
+              El modelo clasifica correctamente al 95.6% de los clientes. Es muy bueno identificando a quienes NO aceptan (97.7%), pero podría mejorar en quienes SÍ aceptan (78.0%).
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">12 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 12: CURVA ROC                                       -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide dark" id="slide-12">
+      <div class="slide-inner">
+        <div class="tag">12 · ROC</div>
+        <h2>Curva <span class="hl-gold">ROC</span></h2>
+        <div style="max-width:650px;margin:0 auto;">
+          <div class="img-container">
+            <img src="img_graficos/09_roc.png" alt="Curva ROC">
+            <div class="caption">
+              <strong>AUC = 0.95</strong> — Excelente capacidad predictiva. El modelo distingue perfectamente entre clientes que aceptan y no aceptan el préstamo.
+            </div>
+          </div>
+          <div style="display:flex;gap:1.5rem;flex-wrap:wrap;justify-content:center;margin-top:0.6rem;">
+            <div class="stat" style="padding:0.6rem 1rem;"><span class="number gold" style="font-size:1.4rem;">0.95</span><span class="label">AUC</span></div>
+            <div class="stat" style="padding:0.6rem 1rem;"><span class="number green" style="font-size:1.4rem;">Excelente</span><span class="label">Interpretación</span></div>
+            <div class="stat" style="padding:0.6rem 1rem;"><span class="number blue" style="font-size:1.4rem;">95%</span><span class="label">Poder predictivo</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">13 / 14</span>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- SLIDE 13: DASHBOARD FINAL                                 -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section class="slide light" id="slide-13">
+      <div class="slide-inner">
+        <div class="tag">🏆 Dashboard ejecutivo</div>
+        <h2>Resumen <span class="hl-gold">final</span></h2>
+        <p class="big-text" style="margin-bottom:1rem;">Indicadores clave del análisis de préstamos bancarios.</p>
+
+        <div class="dashboard">
+          <div class="stat"><span class="number gold">5,000</span><span class="label">Clientes analizados</span></div>
+          <div class="stat"><span class="number green">95.6%</span><span class="label">Precisión del modelo</span></div>
+          <div class="stat"><span class="number blue">0.95</span><span class="label">AUC (ROC)</span></div>
+          <div class="stat"><span class="number orange">Income</span><span class="label">Factor más importante</span></div>
+        </div>
+
+        <div class="divider gold"></div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+          <div class="card green-border">
+            <h3 style="color:var(--accent-success);font-size:0.95rem;">✅ Aumentan la probabilidad</h3>
+            <div class="step-row"><div class="step-num" style="background:var(--accent-success);">1</div><p style="font-size:0.8rem;"><strong>Income</strong> — Mayor ingreso = mayor probabilidad</p></div>
+            <div class="step-row"><div class="step-num" style="background:var(--accent-success);">2</div><p style="font-size:0.8rem;"><strong>Education</strong> — Nivel avanzado aumenta la probabilidad</p></div>
+            <div class="step-row"><div class="step-num" style="background:var(--accent-success);">3</div><p style="font-size:0.8rem;"><strong>CD.Account</strong> — Tener CD Account incrementa la probabilidad</p></div>
+            <div class="step-row"><div class="step-num" style="background:var(--accent-success);">4</div><p style="font-size:0.8rem;"><strong>Family</strong> — Mayor familia → mayor probabilidad</p></div>
+          </div>
+          <div class="card red-border">
+            <h3 style="color:var(--accent-danger);font-size:0.95rem;">❌ Disminuyen la probabilidad</h3>
+            <div class="step-row"><div class="step-num" style="background:var(--accent-danger);">1</div><p style="font-size:0.8rem;"><strong>Online</strong> — Usar banca online REDUCE la probabilidad</p></div>
+            <div class="step-row"><div class="step-num" style="background:var(--accent-danger);">2</div><p style="font-size:0.8rem;"><strong>CreditCard</strong> — Tener tarjeta del banco REDUCE la probabilidad</p></div>
+            <div class="step-row"><div class="step-num" style="background:var(--accent-danger);">3</div><p style="font-size:0.8rem;"><strong>Securities.Account</strong> — Tener cuenta de valores REDUCE la probabilidad</p></div>
+          </div>
+        </div>
+
+        <div class="divider gold"></div>
+
+        <div class="card gold-border" style="text-align:center;">
+          <h3 style="color:var(--secondary);font-size:0.95rem;">📌 Perfil del cliente que acepta el préstamo</h3>
+          <p style="font-size:0.9rem;color:var(--text-dark);">
+            <span style="color:var(--secondary);">●</span> Ingreso alto ·
+            <span style="color:var(--accent-success);">●</span> Educación avanzada ·
+            <span style="color:var(--secondary);">●</span> Tiene CD Account ·
+            <span style="color:var(--accent-danger);">●</span> NO usa banca online ·
+            <span style="color:var(--accent-danger);">●</span> NO tiene tarjeta del banco
+          </p>
+          <div class="insight gold" style="margin-top:0.4rem;font-size:0.85rem;">
+            El modelo de regresión logística permite identificar con alta precisión (95.6%) a los clientes con mayor probabilidad de aceptar un préstamo personal, optimizando así las campañas bancarias.
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:center;margin-top:1.2rem;">
+          <button class="btn" onclick="goTo(0)">⬆ Volver al inicio</button>
+        </div>
+      </div>
+      <div class="slide-footer">
+        <span class="footer-univ">ESPOCH · Escuela Superior Politécnica de Chimborazo</span>
+        <span>Alexis Galarza &amp; Joel Cuvi</span>
+        <span class="footer-slide">14 / 14</span>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <!-- SCRIPT: NAVEGACIÓN Y PROGRESS                                       -->
+  <!-- ────────────────────────────────────────────────────────────────────── -->
+  <script>
+    // ─── NAVEGACIÓN ────────────────────────────────────────────────────────
+    const slideIds = [];
+    for (let i = 0; i <= 13; i++) {
+      slideIds.push('slide-' + i);
+    }
+
+    function goTo(idx) {
+      const el = document.getElementById(slideIds[idx]);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateNav(idx) {
+      document.querySelectorAll('.nav-item').forEach((d, i) => {
+        d.classList.toggle('active', i === idx);
+      });
+      const pct = (idx / (slideIds.length - 1)) * 100;
+      document.getElementById('progressFill').style.width = pct + '%';
+    }
+
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add('visible');
+          const idx = slideIds.indexOf(e.target.id);
+          if (idx >= 0) updateNav(idx);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    slideIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+
+    // Inicializar primera slide visible
+    setTimeout(() => {
+      document.querySelectorAll('.slide').forEach(el => {
+        const rect = el.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+          el.classList.add('visible');
+        }
+      });
+    }, 200);
+  </script>
+
+</body>
+</html>
